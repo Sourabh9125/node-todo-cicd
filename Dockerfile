@@ -1,16 +1,24 @@
-# Node Base Image
-FROM node:12.2.0-alpine
+FROM node:20 AS builder
 
-#Working Directry
-WORKDIR /node
+WORKDIR /app
 
-#Copy the Code
+COPY package*.json .
+
+RUN npm i
+
 COPY . .
 
-#Install the dependecies
-RUN npm install
-RUN npm run test
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY --from=builder /app/node_modules ./
+
+COPY --from=builder /app .
+
+
 EXPOSE 8000
 
-#Run the code
 CMD ["node","app.js"]
+
+
