@@ -1,35 +1,65 @@
+@Library('shared') _
 pipeline{
-    agent { label 'dev-server' }
-    
+    agent {label 'dev'};
     stages{
-        stage("Code Clone"){
+        stage("workspace clean"){
             steps{
-                echo "Code Clone Stage"
-                git url: "https://github.com/LondheShubham153/node-todo-cicd.git", branch: "master"
-            }
-        }
-        stage("Code Build & Test"){
-            steps{
-                echo "Code Build Stage"
-                sh "docker build -t node-app ."
-            }
-        }
-        stage("Push To DockerHub"){
-            steps{
-                withCredentials([usernamePassword(
-                    credentialsId:"dockerHubCreds",
-                    usernameVariable:"dockerHubUser", 
-                    passwordVariable:"dockerHubPass")]){
-                sh 'echo $dockerHubPass | docker login -u $dockerHubUser --password-stdin'
-                sh "docker image tag node-app:latest ${env.dockerHubUser}/node-app:latest"
-                sh "docker push ${env.dockerHubUser}/node-app:latest"
+                script{
+                  clean_ws()
                 }
             }
         }
-        stage("Deploy"){
+        stage("code clone"){
             steps{
-                sh "docker compose down && docker compose up -d --build"
+                script{
+            clone("https://github.com/Sourabh9125/node-todo-cicd.git", "dev")
+                }
+        }
+    }
+        
+        stage("trivy scan"){
+            steps{
+                script{
+                    trivy()
+                }
+            }
+        }
+        stage("docker build"){
+        steps{
+            script{
+            docker_build("nodo-todo-cicd ","v1") 
             }
         }
     }
+        stage("testing"){
+        steps{
+            echo "testing the code"
+        }
+    }
+        stage("push to dockerHub"){
+        steps{
+            script{
+                docker_hub("dockerHubCreds", "nodo-todo-cicd ","v1")
+            }
+        }
+    }
+        stage("deploying "){
+        steps{
+            script{
+                docker_compose()
+            }
+        }
+    }
+ }
+
+ post{
+     failure{
+         script{
+             emailext from: "lodhisaurabh9125@gmail.com",
+             to: "lodhisourabh4678@gmail.com",
+             body: "pipeline failure check immeidatly",
+             subject: "pipeline status"
+         }
+     }
+ }   
 }
